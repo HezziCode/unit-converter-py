@@ -1,4 +1,6 @@
 portaudio19-dev
 python3-pyaudio
+ffmpeg
 libasound2-dev
-python3-all-dev 
+python3-all-dev
+alsa-utils 

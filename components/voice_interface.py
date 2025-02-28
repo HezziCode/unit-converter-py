@@ -54,7 +54,7 @@ class VoiceInterface:
             st.warning("Could not play audio response.", icon="🔊")
 
     def render(self):
-        """Render voice interface with smart fallback"""
+        """Render minimal voice interface"""
         st.markdown("""
             <style>
             .input-container {
@@ -63,35 +63,25 @@ class VoiceInterface:
                 border-radius: 10px;
                 margin: 10px 0;
             }
-            .input-option {
-                margin: 10px 0;
-                padding: 15px;
-                border-radius: 8px;
-                background: white;
-            }
             </style>
         """, unsafe_allow_html=True)
-
-        # Smart input selection
+        
         st.markdown('<div class="input-container">', unsafe_allow_html=True)
         
         input_type = st.radio(
             "Choose input method:",
-            ["💬 Text Input (Recommended)", "🎤 Voice Input (Beta)"],
-            index=0  # Default to text input
+            ["💬 Text Input", "🎤 Voice Input"],
+            index=0
         )
         
-        if input_type == "💬 Text Input (Recommended)":
+        if input_type == "💬 Text Input":
             text = st.text_input(
-                "Enter your conversion command:",
-                placeholder="Example: convert 5 kilometers to miles",
-                help="Type your conversion request here"
+                "Enter conversion command:",
+                placeholder="Example: convert 5 kilometers to miles"
             )
             if text:
                 self.process_command(text)
-            
-        else:  # Voice Input
-            st.info("🎤 Voice input is in beta. If it doesn't work, please use text input.")
+        else:
             if st.button("Start Voice Command", use_container_width=True):
                 text = self.listen_and_transcribe()
                 if text:
@@ -126,33 +116,22 @@ class VoiceInterface:
     def listen_and_transcribe(self):
         try:
             with sr.Microphone() as source:
-                # Custom CSS for horizontal messages
-                st.markdown("""
-                    <style>
-                    .horizontal-message {
-                        display: inline-block;
-                        padding: 8px 16px;
-                        border-radius: 4px;
-                        margin: 0 auto;
-                        text-align: center;
-                        background: #262730;
-                        color: white;
-                        border: 1px solid #FF4B4B;
-                    }
-                    </style>
-                """, unsafe_allow_html=True)
-                
+                # Silently adjust for ambient noise
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                # Listen without showing status
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 
                 try:
                     text = self.recognizer.recognize_google(audio)
-                    return text.lower()
+                    if text:
+                        # Process directly without showing intermediate messages
+                        return text.lower()
                 except sr.UnknownValueError:
-                    st.markdown('<div class="horizontal-message">🎤 Speak clearly</div>', unsafe_allow_html=True)
+                    pass  # Silent fail
                 except sr.RequestError:
-                    st.markdown('<div class="horizontal-message">⚠️ Service unavailable</div>', unsafe_allow_html=True)
+                    pass  # Silent fail
                 
         except Exception as e:
-            st.markdown('<div class="horizontal-message">🎤 Enable microphone access</div>', unsafe_allow_html=True)
+            # Only show critical error
+            st.error("Please enable microphone access")
         return None
