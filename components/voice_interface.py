@@ -103,13 +103,13 @@ class VoiceInterface:
                 
                 try:
                     text = self.recognizer.recognize_google(audio)
+                    st.success(f"Recognized: {text}")
                     return text.lower()
                 except sr.UnknownValueError:
-                    st.info("🎤 Speak clearly", icon="ℹ️")
+                    st.warning("Could not understand", icon="🎤")
                 except sr.RequestError:
-                    st.warning("Service unavailable", icon="⚠️")
+                    st.error("Service error", icon="⚠️")
                 
         except Exception as e:
-            # Show only the main error message without technical details
-            st.error("Microphone error", icon="🎤")
+            st.error("Device error", icon="🎤")
         return None
