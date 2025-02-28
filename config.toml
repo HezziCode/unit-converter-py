@@ -1,0 +1,10 @@
+[server]
+enableCORS = true
+enableXsrfProtection = true
+
+[browser]
+serverAddress = "https://unit-converter-by-hezzi.streamlit.app/"
+serverPort = 8501
+
+[global]
+developmentMode = false 

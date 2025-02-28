@@ -123,15 +123,9 @@ class VoiceInterface:
                 
                 try:
                     text = self.recognizer.recognize_google(audio)
-                    if text:
-                        # Process directly without showing intermediate messages
-                        return text.lower()
-                except sr.UnknownValueError:
-                    pass  # Silent fail
-                except sr.RequestError:
-                    pass  # Silent fail
+                    return text.lower() if text else None
+                except (sr.UnknownValueError, sr.RequestError):
+                    return None
                 
-        except Exception as e:
-            # Only show critical error
-            st.error("Please enable microphone access")
-        return None
+        except Exception:
+            return None  # Silently handle all errors
