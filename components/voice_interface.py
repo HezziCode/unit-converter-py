@@ -98,35 +98,18 @@ class VoiceInterface:
     def listen_and_transcribe(self):
         try:
             with sr.Microphone() as source:
-                # Create status container
-                status_container = st.empty()
-                
-                # Adjust for background noise silently
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                
-                # Listen for audio
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 
                 try:
                     text = self.recognizer.recognize_google(audio)
                     return text.lower()
                 except sr.UnknownValueError:
-                    st.markdown("""
-                        <div style="padding: 10px; border-radius: 5px; background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA; text-align: center;">
-                            🎤 Could not understand audio. Please speak clearly.
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.info("🎤 Speak clearly", icon="ℹ️")
                 except sr.RequestError:
-                    st.markdown("""
-                        <div style="padding: 10px; border-radius: 5px; background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; text-align: center;">
-                            ❌ Could not access speech recognition service.
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.warning("Service unavailable", icon="⚠️")
                 
         except Exception as e:
-            st.markdown(f"""
-                <div style="padding: 10px; border-radius: 5px; background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; text-align: center;">
-                    ❌ Error: {str(e)}
-                </div>
-            """, unsafe_allow_html=True)
+            # Show only the main error message without technical details
+            st.error("Microphone error", icon="🎤")
         return None
