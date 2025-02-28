@@ -54,37 +54,109 @@ class VoiceInterface:
             st.warning("Could not play audio response.", icon="🔊")
 
     def render(self):
+        """Render voice interface with device detection and troubleshooting"""
         st.markdown("""
             <style>
-            .voice-container {
-                display: flex;
-                align-items: center;
-                gap: 20px;
+            .troubleshoot-container {
+                background: #f8f9fa;
                 padding: 15px;
-                background: #1E1E1E;
-                border-radius: 10px;
-                border: 2px solid #FF6B00;
+                border-radius: 8px;
                 margin: 10px 0;
             }
-            .voice-status {
-                flex: 1;
-                text-align: center;
+            .step-guide {
+                margin: 5px 0;
+                padding: 8px;
+                background: white;
+                border-radius: 4px;
+            }
+            .browser-icon {
+                font-size: 20px;
+                margin-right: 8px;
             }
             </style>
         """, unsafe_allow_html=True)
-        
+
         col1, col2 = st.columns([2, 3])
         
         with col1:
-            st.subheader("🎤 Voice Commands")
-            if st.button("Start Voice Command", use_container_width=True):
-                with st.spinner(""):  # Empty spinner to avoid vertical messages
+            st.subheader("🎤 Voice Input")
+            
+            # Always show text input as a reliable fallback
+            text_input = st.text_input(
+                "Enter conversion command:",
+                placeholder="Example: convert 5 kilometers to miles",
+                key="voice_text_input"
+            )
+            
+            tabs = st.tabs(["Voice Input", "Help"])
+            
+            with tabs[0]:
+                if st.button("Start Voice Command", use_container_width=True):
+                    # Try to detect browser
+                    user_agent = st.session_state.get('user_agent', '')
+                    if 'Chrome' in user_agent:
+                        st.info("🎤 Click 'Allow' when Chrome asks for microphone permission")
+                    elif 'Firefox' in user_agent:
+                        st.info("🎤 Click the microphone icon in the address bar")
+                    elif 'Safari' in user_agent:
+                        st.info("🎤 Check Safari Settings > Websites > Microphone")
+                    
                     text = self.listen_and_transcribe()
                     if text:
-                        st.markdown(f"""
-                           
-                        """, unsafe_allow_html=True)
-                        # Process the command...
+                        self.process_command(text)
+            
+            with tabs[1]:
+                st.markdown("""
+                    <div class="troubleshoot-container">
+                    <h4>📝 Microphone Troubleshooting:</h4>
+                    
+                    <div class="step-guide">
+                        <b>Chrome:</b>
+                        1. Click 🔒 in address bar
+                        2. Click Site Settings
+                        3. Allow microphone
+                    </div>
+                    
+                    <div class="step-guide">
+                        <b>Firefox:</b>
+                        1. Click 🎤 in address bar
+                        2. Choose "Allow Microphone"
+                    </div>
+                    
+                    <div class="step-guide">
+                        <b>Safari:</b>
+                        1. Click Safari > Preferences
+                        2. Go to Privacy > Microphone
+                        3. Allow for this site
+                    </div>
+                    
+                    <div class="step-guide">
+                        <b>Alternative:</b>
+                        Use text input above for reliable conversion
+                    </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        # Process text input if provided
+        if text_input:
+            self.process_command(text_input)
+
+    def process_command(self, text):
+        """Process voice or text command"""
+        try:
+            value, from_unit, to_unit = self.parse_conversion_request(text)
+            if value and from_unit and to_unit:
+                category = self.find_category(from_unit, to_unit)
+                if category:
+                    result = self.converter.convert(value, from_unit, to_unit, category)
+                    if result:
+                        st.success(f"{value} {from_unit} = {result} {to_unit}")
+                else:
+                    st.warning("Could not determine conversion category")
+            else:
+                st.info("Please use format: convert [number] [unit] to [unit]")
+        except Exception as e:
+            st.error("Could not process command")
 
     def find_category(self, from_unit, to_unit):
         for category, data in self.converter.categories.items():

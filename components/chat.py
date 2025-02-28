@@ -56,6 +56,46 @@ class ChatInterface:
 
     def render(self):
         """Render the chat interface"""
+        st.markdown("""
+            <style>
+            /* Chat specific styles */
+            .chat-container {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+            
+            .chat-message {
+                padding: 0.8rem;
+                margin: 0.5rem 0;
+                border-radius: 12px;
+                word-wrap: break-word;
+            }
+            
+            .user-message {
+                background: #e3f2fd;
+                margin-left: 1rem;
+                margin-right: 0;
+            }
+            
+            .assistant-message {
+                background: #f5f5f5;
+                margin-right: 1rem;
+                margin-left: 0;
+            }
+            
+            @media (max-width: 768px) {
+                .chat-message {
+                    margin: 0.5rem;
+                    font-size: 0.9rem;
+                }
+                
+                .chat-input {
+                    padding: 0.5rem;
+                }
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
         st.subheader("Chat with Unit Conversion Expert")
         
         # Display chat history

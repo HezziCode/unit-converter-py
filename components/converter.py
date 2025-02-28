@@ -50,19 +50,56 @@ class UnitConverter:
 
     def render(self):
         """Render the main converter interface"""
-        # Render header and UI components
-        self.ui.render_header()
+        st.markdown("""
+            <style>
+            /* Converter specific styles */
+            .converter-container {
+                background: #f8f9fa;
+                padding: 1.5rem;
+                border-radius: 12px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            @media (max-width: 768px) {
+                .converter-container {
+                    padding: 1rem;
+                }
+                
+                /* Stack inputs on mobile */
+                .conversion-inputs {
+                    flex-direction: column;
+                    gap: 0.5rem;
+                }
+            }
+            </style>
+        """, unsafe_allow_html=True)
         
-        # Setup main conversion interface
-        category = self.ui.render_category_selector()
-        from_unit, to_unit = self.ui.render_unit_selectors(category)
-        value = self.ui.render_value_input()
-        
-        # Perform conversion and show result
-        if value and from_unit and to_unit:
-            result = self.convert(value, from_unit, to_unit, category)
-            if result:
-                self.ui.render_result(value, from_unit, to_unit, result)
+        with st.container():
+            st.markdown('<div class="converter-container">', unsafe_allow_html=True)
+            
+            # Mobile-friendly layout
+            if st.session_state.get('mobile_view', True):
+                # Single column layout for mobile
+                category = self.ui.render_category_selector()
+                from_unit = self.ui.render_unit_selector("From", category)
+                to_unit = self.ui.render_unit_selector("To", category)
+                value = self.ui.render_value_input()
+            else:
+                # Two column layout for desktop
+                col1, col2 = st.columns([1, 1])
+                with col1:
+                    category = self.ui.render_category_selector()
+                    from_unit = self.ui.render_unit_selector("From", category)
+                with col2:
+                    value = self.ui.render_value_input()
+                    to_unit = self.ui.render_unit_selector("To", category)
+            
+            if value and from_unit and to_unit:
+                result = self.convert(value, from_unit, to_unit, category)
+                if result:
+                    self.ui.render_result(value, from_unit, to_unit, result)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
     def render(self):
         st.markdown("""
