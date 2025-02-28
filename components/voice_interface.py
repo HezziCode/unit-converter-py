@@ -128,5 +128,7 @@ class VoiceInterface:
                     st.error("Service unavailable")
                 
         except Exception:
-            st.error("permission required")
+            cols = st.columns([1, 2, 1])  # Create 3 columns for center alignment
+            with cols[1]:  # Use middle column
+                st.error("🎤 Microphone permission required", icon=None)
         return None
