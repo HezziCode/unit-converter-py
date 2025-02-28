@@ -81,5 +81,19 @@ def main():
         converter = UnitConverter(model)
         converter.render()
 
+    # Check if running on Streamlit Cloud
+    is_cloud = st.session_state.get('is_streamlit_cloud', False)
+    
+    if is_cloud and not st.get_option("browser.serverAddress").startswith("https"):
+        st.error("⚠️ Microphone access requires HTTPS. Please use the secure URL.")
+        st.markdown("""
+            ### How to Enable Microphone:
+            1. Use Chrome/Firefox/Edge browser
+            2. Access via HTTPS URL
+            3. Allow microphone when prompted
+            
+            Or use text input below:
+        """)
+
 if __name__ == "__main__":
     main() 

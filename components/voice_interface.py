@@ -54,92 +54,50 @@ class VoiceInterface:
             st.warning("Could not play audio response.", icon="🔊")
 
     def render(self):
-        """Render voice interface with device detection and troubleshooting"""
+        """Render voice interface with smart fallback"""
         st.markdown("""
             <style>
-            .troubleshoot-container {
+            .input-container {
                 background: #f8f9fa;
-                padding: 15px;
-                border-radius: 8px;
+                padding: 20px;
+                border-radius: 10px;
                 margin: 10px 0;
             }
-            .step-guide {
-                margin: 5px 0;
-                padding: 8px;
+            .input-option {
+                margin: 10px 0;
+                padding: 15px;
+                border-radius: 8px;
                 background: white;
-                border-radius: 4px;
-            }
-            .browser-icon {
-                font-size: 20px;
-                margin-right: 8px;
             }
             </style>
         """, unsafe_allow_html=True)
 
-        col1, col2 = st.columns([2, 3])
+        # Smart input selection
+        st.markdown('<div class="input-container">', unsafe_allow_html=True)
         
-        with col1:
-            st.subheader("🎤 Voice Input")
-            
-            # Always show text input as a reliable fallback
-            text_input = st.text_input(
-                "Enter conversion command:",
+        input_type = st.radio(
+            "Choose input method:",
+            ["💬 Text Input (Recommended)", "🎤 Voice Input (Beta)"],
+            index=0  # Default to text input
+        )
+        
+        if input_type == "💬 Text Input (Recommended)":
+            text = st.text_input(
+                "Enter your conversion command:",
                 placeholder="Example: convert 5 kilometers to miles",
-                key="voice_text_input"
+                help="Type your conversion request here"
             )
+            if text:
+                self.process_command(text)
             
-            tabs = st.tabs(["Voice Input", "Help"])
-            
-            with tabs[0]:
-                if st.button("Start Voice Command", use_container_width=True):
-                    # Try to detect browser
-                    user_agent = st.session_state.get('user_agent', '')
-                    if 'Chrome' in user_agent:
-                        st.info("🎤 Click 'Allow' when Chrome asks for microphone permission")
-                    elif 'Firefox' in user_agent:
-                        st.info("🎤 Click the microphone icon in the address bar")
-                    elif 'Safari' in user_agent:
-                        st.info("🎤 Check Safari Settings > Websites > Microphone")
-                    
-                    text = self.listen_and_transcribe()
-                    if text:
-                        self.process_command(text)
-            
-            with tabs[1]:
-                st.markdown("""
-                    <div class="troubleshoot-container">
-                    <h4>📝 Microphone Troubleshooting:</h4>
-                    
-                    <div class="step-guide">
-                        <b>Chrome:</b>
-                        1. Click 🔒 in address bar
-                        2. Click Site Settings
-                        3. Allow microphone
-                    </div>
-                    
-                    <div class="step-guide">
-                        <b>Firefox:</b>
-                        1. Click 🎤 in address bar
-                        2. Choose "Allow Microphone"
-                    </div>
-                    
-                    <div class="step-guide">
-                        <b>Safari:</b>
-                        1. Click Safari > Preferences
-                        2. Go to Privacy > Microphone
-                        3. Allow for this site
-                    </div>
-                    
-                    <div class="step-guide">
-                        <b>Alternative:</b>
-                        Use text input above for reliable conversion
-                    </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-        # Process text input if provided
-        if text_input:
-            self.process_command(text_input)
+        else:  # Voice Input
+            st.info("🎤 Voice input is in beta. If it doesn't work, please use text input.")
+            if st.button("Start Voice Command", use_container_width=True):
+                text = self.listen_and_transcribe()
+                if text:
+                    self.process_command(text)
+                
+        st.markdown('</div>', unsafe_allow_html=True)
 
     def process_command(self, text):
         """Process voice or text command"""
