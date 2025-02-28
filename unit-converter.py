@@ -1,8 +1,9 @@
 # Main application file that initializes and runs the converter
 
 import streamlit as st
-from components.api_config import setup_gemini
+from components.unit_config import UnitCategories
 from components.converter import UnitConverter
+from components.api_config import setup_model  # Changed from setup_gemini
 import time
 
 # Initialize session state for API call tracking
@@ -43,16 +44,19 @@ def handle_conversion(model, prompt):
         return None
 
 def main():
-    """Main application entry point"""
-    try:
-        # Initialize components
-        model = setup_gemini()
+    st.set_page_config(
+        page_title="Unit Converter Pro",
+        page_icon="🔄",
+        layout="wide"
+    )
+    
+    # Initialize model
+    model = setup_model()
+    
+    if model:
+        # Initialize and render converter
         converter = UnitConverter(model)
         converter.render()
-        
-    except Exception as e:
-        st.error("An error occurred. Please try again later.")
-        st.info("⏳ Taking a quick break to refresh...")
 
 if __name__ == "__main__":
     main() 

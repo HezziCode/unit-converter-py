@@ -21,8 +21,8 @@ class ChatInterface:
             return st.session_state.response_cache[prompt]
 
         # Enhanced context for better AI responses
-        system_prompt = """You are a friendly and helpful AI assistant who specializes in unit conversions and measurements, 
-        but can also engage in natural conversation. When asked about units or conversions, provide accurate technical information. 
+        system_prompt = """You are a friendly and helpful AI assistant who specializes in unit conversions and measurements. 
+        When asked about units or conversions, provide accurate technical information. 
         For general conversation, respond naturally while occasionally relating to measurement concepts when relevant."""
         
         full_prompt = f"{system_prompt}\n\nUser: {prompt}\nAssistant:"
@@ -31,18 +31,28 @@ class ChatInterface:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                response = self.model.generate_content(full_prompt)
-                response_text = response.text
+                response = self.model.generate(
+                    prompt=full_prompt,
+                    max_tokens=150,
+                    temperature=0.7,
+                    return_likelihoods='NONE'
+                )
+                response_text = response.generations[0].text
+                
+                # Update API call counter
+                if 'api_calls' in st.session_state:
+                    st.session_state.api_calls += 1
+                
                 # Cache the response for future use
                 st.session_state.response_cache[prompt] = response_text
                 return response_text
             except Exception as e:
                 if "429" in str(e) and attempt < max_retries - 1:
-                    wait_time = int((attempt + 1) * 5)
+                    wait_time = (attempt + 1) * 5
                     with st.spinner(f"Rate limit hit. Waiting {wait_time} seconds..."):
                         time.sleep(wait_time)
                     continue
-                return f"I apologize, but I encountered an error. Please try again in a moment."
+                return "I apologize, but I encountered an error. Please try again."
 
     def render(self):
         """Render the chat interface"""

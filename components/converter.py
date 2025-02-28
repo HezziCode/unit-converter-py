@@ -17,21 +17,35 @@ class UnitConverter:
     def convert(self, value, from_unit, to_unit, category):
         """Perform unit conversion using AI model"""
         try:
-            # Prepare conversion prompt
             prompt = f"""
             Task: Unit conversion
             Convert: {value} {from_unit} to {to_unit}
             Category: {category}
-            Instructions: Return only the numerical result.
+            Instructions: Return only the numerical result without any text or units.
+            Example: If converting 1 kilometer to miles, just return 0.621371
             """
             
-            # Get response from AI model
-            response = self.model.generate_content(prompt)
-            result = float(response.text.strip())
+            response = self.model.generate(
+                prompt=prompt,
+                max_tokens=20,
+                temperature=0,
+                return_likelihoods='NONE'
+            )
+            
+            # Extract numerical result
+            result = float(response.generations[0].text.strip())
+            
+            # Update API counter
+            if 'api_calls' in st.session_state:
+                st.session_state.api_calls += 1
+            
             return result
             
         except Exception as e:
-            st.error(f"Conversion error: {str(e)}")
+            if "429" in str(e):
+                st.warning("⏳ Please wait a moment, we're experiencing high traffic.", icon="⌛")
+            else:
+                st.error(f"Conversion error: {str(e)}")
             return None
 
     def render(self):
