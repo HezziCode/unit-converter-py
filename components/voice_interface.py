@@ -82,9 +82,7 @@ class VoiceInterface:
                     text = self.listen_and_transcribe()
                     if text:
                         st.markdown(f"""
-                            <div class="voice-container">
-                                <div class="voice-status">✅ "{text}"</div>
-                            </div>
+                           
                         """, unsafe_allow_html=True)
                         # Process the command...
 
@@ -98,16 +96,18 @@ class VoiceInterface:
     def listen_and_transcribe(self):
         try:
             with sr.Microphone() as source:
-                # Create status container with custom styling
+                # Custom CSS for horizontal messages
                 st.markdown("""
                     <style>
-                    .status-message {
-                        padding: 10px;
-                        border-radius: 5px;
-                        margin: 5px 0;
-                        text-align: center;
+                    .horizontal-message {
                         display: inline-block;
-                        width: auto;
+                        padding: 8px 16px;
+                        border-radius: 4px;
+                        margin: 0 auto;
+                        text-align: center;
+                        background: #262730;
+                        color: white;
+                        border: 1px solid #FF4B4B;
                     }
                     </style>
                 """, unsafe_allow_html=True)
@@ -117,25 +117,12 @@ class VoiceInterface:
                 
                 try:
                     text = self.recognizer.recognize_google(audio)
-                    st.markdown(
-                        f'<div class="status-message" style="background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB;">✅ {text}</div>',
-                        unsafe_allow_html=True
-                    )
                     return text.lower()
                 except sr.UnknownValueError:
-                    st.markdown(
-                        '<div class="status-message" style="background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA;">🎤 Speak clearly</div>',
-                        unsafe_allow_html=True
-                    )
+                    st.markdown('<div class="horizontal-message">🎤 Speak clearly</div>', unsafe_allow_html=True)
                 except sr.RequestError:
-                    st.markdown(
-                        '<div class="status-message" style="background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB;">⚠️ Service error</div>',
-                        unsafe_allow_html=True
-                    )
+                    st.markdown('<div class="horizontal-message">⚠️ Service unavailable</div>', unsafe_allow_html=True)
                 
         except Exception as e:
-            st.markdown(
-                '<div class="status-message" style="background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB;">🎤 Device error</div>',
-                unsafe_allow_html=True
-            )
+            st.markdown('<div class="horizontal-message">🎤 Enable microphone access</div>', unsafe_allow_html=True)
         return None
