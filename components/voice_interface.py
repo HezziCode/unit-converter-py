@@ -97,8 +97,12 @@ class VoiceInterface:
                     result = self.converter.convert(value, from_unit, to_unit, category)
                     if result:
                         st.write(f"{value} {from_unit} = {result} {to_unit}")
+                else:
+                    st.error("⚠️ Invalid", icon="")  # Horizontal error for invalid units
+            else:
+                st.error("⚠️ Invalid", icon="")  # Horizontal error for invalid format
         except Exception:
-            pass
+            st.error("⚠️ Error", icon="")  # Horizontal error for general issues
 
     def find_category(self, from_unit, to_unit):
         """Find the category that contains both units"""
@@ -117,6 +121,10 @@ class VoiceInterface:
                 text = self.recognizer.recognize_google(audio)
                 if text:
                     return text.lower()
+        except sr.UnknownValueError:
+            st.error("⚠️ Retry", icon="")  # Horizontal single-line error
+        except sr.RequestError:
+            st.error("⚠️ Retry", icon="")  # Horizontal single-line error
         except Exception:
-            pass
+            st.error("⚠️ Mic Error", icon="")  # Horizontal single-line error for mic issues
         return None
