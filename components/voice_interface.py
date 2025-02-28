@@ -126,4 +126,7 @@ class VoiceInterface:
                     st.error("Speech not recognized")
                 except sr.RequestError:
                     st.error("Service unavailable")
+                
+        except Exception:
+            st.error("permission required")
         return None
