@@ -98,18 +98,44 @@ class VoiceInterface:
     def listen_and_transcribe(self):
         try:
             with sr.Microphone() as source:
+                # Create status container with custom styling
+                st.markdown("""
+                    <style>
+                    .status-message {
+                        padding: 10px;
+                        border-radius: 5px;
+                        margin: 5px 0;
+                        text-align: center;
+                        display: inline-block;
+                        width: auto;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 
                 try:
                     text = self.recognizer.recognize_google(audio)
-                    st.success(f"Recognized: {text}")
+                    st.markdown(
+                        f'<div class="status-message" style="background-color: #D4EDDA; color: #155724; border: 1px solid #C3E6CB;">✅ {text}</div>',
+                        unsafe_allow_html=True
+                    )
                     return text.lower()
                 except sr.UnknownValueError:
-                    st.warning("Could not understand", icon="🎤")
+                    st.markdown(
+                        '<div class="status-message" style="background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA;">🎤 Speak clearly</div>',
+                        unsafe_allow_html=True
+                    )
                 except sr.RequestError:
-                    st.error("Service error", icon="⚠️")
+                    st.markdown(
+                        '<div class="status-message" style="background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB;">⚠️ Service error</div>',
+                        unsafe_allow_html=True
+                    )
                 
         except Exception as e:
-            st.error("Device error", icon="🎤")
+            st.markdown(
+                '<div class="status-message" style="background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB;">🎤 Device error</div>',
+                unsafe_allow_html=True
+            )
         return None
