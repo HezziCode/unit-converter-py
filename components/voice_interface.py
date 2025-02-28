@@ -54,41 +54,39 @@ class VoiceInterface:
             st.warning("Could not play audio response.", icon="🔊")
 
     def render(self):
+        st.markdown("""
+            <style>
+            .voice-container {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                padding: 15px;
+                background: #1E1E1E;
+                border-radius: 10px;
+                border: 2px solid #FF6B00;
+                margin: 10px 0;
+            }
+            .voice-status {
+                flex: 1;
+                text-align: center;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+        
         col1, col2 = st.columns([2, 3])
         
         with col1:
             st.subheader("🎤 Voice Commands")
-            if st.button("🎤 Start Voice Command", use_container_width=True):
-                with st.spinner("Initializing microphone..."):
+            if st.button("Start Voice Command", use_container_width=True):
+                with st.spinner(""):  # Empty spinner to avoid vertical messages
                     text = self.listen_and_transcribe()
                     if text:
-                        value, from_unit, to_unit = self.parse_conversion_request(text)
-                        if all([value, from_unit, to_unit]):
-                            # Find the appropriate category based on the units
-                            category = self.find_category(from_unit, to_unit)
-                            if category:
-                                result = self.converter.convert(value, from_unit, to_unit, category)
-                                if result is not None:
-                                    result_text = f"{value} {from_unit} is equal to {result:.4f} {to_unit}"
-                                    st.success(result_text)
-                                    self.text_to_speech(result_text)
-                            else:
-                                st.error("Could not determine the conversion category. Please try again.", icon="❌")
-                        else:
-                            st.warning("Please use the format: 'Convert [number] [unit] to [unit]'", icon="⚠️")
-        
-        with col2:
-            st.markdown("""
-            <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px;">
-                <h4 style="margin-top: 0;">💡 How to use voice commands:</h4>
-                <ul>
-                    <li>Click the "Start Voice Command" button</li>
-                    <li>Speak naturally using the format:</li>
-                    <li><i>"Convert [number] [unit] to [unit]"</i></li>
-                    <li>Example: "Convert 10 kilometers to miles"</li>
-                </ul>
-            </div>
-            """, unsafe_allow_html=True)
+                        st.markdown(f"""
+                            <div class="voice-container">
+                                <div class="voice-status">✅ "{text}"</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        # Process the command...
 
     def find_category(self, from_unit, to_unit):
         for category, data in self.converter.categories.items():
@@ -98,23 +96,37 @@ class VoiceInterface:
         return None
 
     def listen_and_transcribe(self):
-        """Listen for voice input and convert to text"""
         try:
             with sr.Microphone() as source:
+                # Create status container
+                status_container = st.empty()
+                
                 # Adjust for background noise silently
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
                 
                 # Listen for audio
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 
-                # Process audio to text without showing intermediate result
-                text = self.recognizer.recognize_google(audio)
-                return text.lower()
+                try:
+                    text = self.recognizer.recognize_google(audio)
+                    return text.lower()
+                except sr.UnknownValueError:
+                    st.markdown("""
+                        <div style="padding: 10px; border-radius: 5px; background-color: #FFF3CD; color: #856404; border: 1px solid #FFEEBA; text-align: center;">
+                            🎤 Could not understand audio. Please speak clearly.
+                        </div>
+                    """, unsafe_allow_html=True)
+                except sr.RequestError:
+                    st.markdown("""
+                        <div style="padding: 10px; border-radius: 5px; background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; text-align: center;">
+                            ❌ Could not access speech recognition service.
+                        </div>
+                    """, unsafe_allow_html=True)
                 
-        except sr.UnknownValueError:
-            st.error("Could not understand audio. Please speak clearly.")
-        except sr.RequestError:
-            st.error("Could not access speech recognition service.")
         except Exception as e:
-            st.error(f"Error: {str(e)}")
+            st.markdown(f"""
+                <div style="padding: 10px; border-radius: 5px; background-color: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; text-align: center;">
+                    ❌ Error: {str(e)}
+                </div>
+            """, unsafe_allow_html=True)
         return None
