@@ -98,11 +98,11 @@ class VoiceInterface:
                     if result:
                         st.write(f"{value} {from_unit} = {result} {to_unit}")
                 else:
-                    st.error("⚠️ Invalid", icon="")  # Horizontal error for invalid units
+                    st.error("Invalid")  # Simple horizontal message
             else:
-                st.error("⚠️ Invalid", icon="")  # Horizontal error for invalid format
+                st.error("Invalid")  # Simple horizontal message
         except Exception:
-            st.error("⚠️ Error", icon="")  # Horizontal error for general issues
+            st.error("Error")  # Simple horizontal message
 
     def find_category(self, from_unit, to_unit):
         """Find the category that contains both units"""
@@ -122,9 +122,9 @@ class VoiceInterface:
                 if text:
                     return text.lower()
         except sr.UnknownValueError:
-            st.error("⚠️ Retry", icon="")  # Horizontal single-line error
+            st.error("Retry")  # Simple horizontal message
         except sr.RequestError:
-            st.error("⚠️ Retry", icon="")  # Horizontal single-line error
+            st.error("Retry")  # Simple horizontal message
         except Exception:
-            st.error("⚠️ Mic Error", icon="")  # Horizontal single-line error for mic issues
+            st.error("Mic Error")  # Simple horizontal message
         return None
