@@ -18,14 +18,12 @@ class VoiceInterface:
 
     def render_voice_button(self):
         # Add Font Awesome and custom styling
-
-        # Voice button with Font Awesome icon
         if st.button("⏺", key="voice_button", help="Click to speak"):
             text = self.listen_and_transcribe()
             if text:
                 st.session_state.voice_input = text
                 st.experimental_rerun()
-    
+
     def handle_voice_input(self):
         if 'voice_text' in st.session_state:
             return st.session_state.voice_text
@@ -39,8 +37,8 @@ class VoiceInterface:
             match = re.search(pattern, text.lower())
             if match:
                 return float(match.group(1)), match.group(2), match.group(3)
-        except Exception as e:
-            st.error(f"Could not parse conversion request: {str(e)}")
+        except Exception:
+            pass
         return None, None, None
 
     def text_to_speech(self, text):
@@ -51,7 +49,7 @@ class VoiceInterface:
             if os.path.exists("temp_result.mp3"):
                 os.remove("temp_result.mp3")
         except Exception:
-            st.warning("Could not play audio response.", icon="🔊")
+            pass
 
     def render(self):
         """Render minimal voice interface"""
@@ -98,15 +96,12 @@ class VoiceInterface:
                 if category:
                     result = self.converter.convert(value, from_unit, to_unit, category)
                     if result:
-                        st.success(f"{value} {from_unit} = {result} {to_unit}")
-                else:
-                    st.warning("Could not determine conversion category")
-            else:
-                st.info("Please use format: convert [number] [unit] to [unit]")
-        except Exception as e:
-            st.error("Could not process command")
+                        st.write(f"{value} {from_unit} = {result} {to_unit}")
+        except Exception:
+            pass
 
     def find_category(self, from_unit, to_unit):
+        """Find the category that contains both units"""
         for category, data in self.converter.categories.items():
             if from_unit.lower() in [u.lower() for u in data["units"]] and \
                to_unit.lower() in [u.lower() for u in data["units"]]:
@@ -114,21 +109,14 @@ class VoiceInterface:
         return None
 
     def listen_and_transcribe(self):
+        """Listen for voice input and convert to text"""
         try:
             with sr.Microphone() as source:
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
-                
-                try:
-                    text = self.recognizer.recognize_google(audio)
-                    return text.lower() if text else None
-                except sr.UnknownValueError:
-                    st.error("Speech not recognized")
-                except sr.RequestError:
-                    st.error("Service unavailable")
-                
+                text = self.recognizer.recognize_google(audio)
+                if text:
+                    return text.lower()
         except Exception:
-            cols = st.columns([1, 2, 1])  # Create 3 columns for center alignment
-            with cols[1]:  # Use middle column
-                st.error("🎤 Microphone permission required", icon=None)
+            pass
         return None
