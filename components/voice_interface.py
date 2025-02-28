@@ -116,16 +116,17 @@ class VoiceInterface:
     def listen_and_transcribe(self):
         try:
             with sr.Microphone() as source:
-                # Silently adjust for ambient noise
                 self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                # Listen without showing status
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 
                 try:
                     text = self.recognizer.recognize_google(audio)
                     return text.lower() if text else None
-                except (sr.UnknownValueError, sr.RequestError):
-                    return None
+                except sr.UnknownValueError:
+                    st.error("Speech not recognized")
+                except sr.RequestError:
+                    st.error("Service unavailable")
                 
         except Exception:
-            return None  # Silently handle all errors
+            st.error("Microphone error")
+        return None
