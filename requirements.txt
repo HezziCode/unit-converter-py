@@ -3,4 +3,5 @@ cohere==4.37
 python-dotenv==1.0.1
 SpeechRecognition==3.10.0
 PyAudio==0.2.11
-
+gTTS==2.5.1
+setuptools==57.5.0
