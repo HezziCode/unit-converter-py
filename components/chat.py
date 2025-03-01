@@ -2,6 +2,10 @@
 
 import streamlit as st
 import time
+from .api_config import get_api_key
+
+# Use API key where needed
+api_key = get_api_key()
 
 class ChatInterface:
     """Handles chat functionality and conversation management"""
@@ -20,39 +24,35 @@ class ChatInterface:
         if prompt in st.session_state.response_cache:
             return st.session_state.response_cache[prompt]
 
-        # Enhanced context for better AI responses
-        system_prompt = """You are a friendly and helpful AI assistant who specializes in unit conversions and measurements. 
-        When asked about units or conversions, provide accurate technical information. 
-        For general conversation, respond naturally while occasionally relating to measurement concepts when relevant."""
-        
-        full_prompt = f"{system_prompt}\n\nUser: {prompt}\nAssistant:"
-        
-        # Add retry logic for rate limits
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                response = self.model.generate(
-                    prompt=full_prompt,
-                    max_tokens=150,
-                    temperature=0.7,
-                    return_likelihoods='NONE'
-                )
-                response_text = response.generations[0].text
-                
-                # Update API call counter
-                if 'api_calls' in st.session_state:
-                    st.session_state.api_calls += 1
-                
-                # Cache the response for future use
-                st.session_state.response_cache[prompt] = response_text
-                return response_text
-            except Exception as e:
-                if "429" in str(e) and attempt < max_retries - 1:
-                    wait_time = (attempt + 1) * 5
-                    with st.spinner(f"Rate limit hit. Waiting {wait_time} seconds..."):
-                        time.sleep(wait_time)
-                    continue
-                return "I apologize, but I encountered an error. Please try again."
+        try:
+            # Enhanced context for better AI responses
+            system_prompt = """You are a friendly and helpful AI assistant who specializes in unit conversions and measurements. 
+            When asked about units or conversions, provide accurate technical information. 
+            For general conversation, respond naturally while occasionally relating to measurement concepts when relevant."""
+            
+            full_prompt = f"{system_prompt}\n\nUser: {prompt}\nAssistant:"
+            
+            response = self.model.generate(
+                prompt=full_prompt,
+                max_tokens=150,
+                temperature=0.7,
+                return_likelihoods='NONE'
+            )
+            
+            response_text = response.generations[0].text
+            
+            # Cache the response
+            st.session_state.response_cache[prompt] = response_text
+            
+            # Update API call counter silently
+            if 'api_calls' in st.session_state:
+                st.session_state.api_calls += 1
+            
+            return response_text
+            
+        except Exception as e:
+            # Return a generic message without showing the trial key error
+            return "I'm currently taking a break. Please try the text-based conversion instead!"
 
     def render(self):
         """Render the chat interface"""

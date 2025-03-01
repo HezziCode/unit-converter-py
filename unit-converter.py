@@ -19,38 +19,39 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # Check if running on Streamlit Cloud
-    server_address = st.get_option("browser.serverAddress")
-    is_cloud = not ("localhost" in server_address or "127.0.0.1" in server_address)
-    st.session_state.is_streamlit_cloud = is_cloud
-    
     st.markdown("""
         <style>
         /* Global Responsive Styles */
         @media (max-width: 768px) {
+            /* Smaller text on mobile */
             .stMarkdown h1 { font-size: 1.5rem !important; }
             .stMarkdown h2 { font-size: 1.3rem !important; }
             .stMarkdown h3 { font-size: 1.1rem !important; }
             
+            /* Full width containers */
             .element-container, .stButton, .stSelectbox {
                 width: 100% !important;
             }
             
+            /* Better spacing */
             .block-container {
                 padding: 1rem !important;
             }
             
+            /* Stack columns on mobile */
             [data-testid="column"] {
                 width: 100% !important;
                 margin-bottom: 1rem;
             }
         }
         
+        /* Better input fields */
         .stNumberInput input, .stSelectbox select {
             min-height: 40px;
             border-radius: 8px !important;
         }
         
+        /* Improved buttons */
         .stButton button {
             width: 100%;
             height: 40px;
@@ -58,11 +59,13 @@ def main():
             transition: all 0.3s ease;
         }
         
+        /* Chat improvements */
         .stChatMessage {
             max-width: 90% !important;
             margin: 0.5rem 0;
         }
         
+        /* Sidebar improvements */
         .css-1d391kg {
             width: 100% !important;
             max-width: 300px;
@@ -78,10 +81,19 @@ def main():
         converter = UnitConverter(model)
         converter.render()
 
-    # Simplified message for non-HTTPS connections
-    if is_cloud and not server_address.startswith("https"):
-        st.info("⚠️ For full functionality, please use the secure (HTTPS) URL.")
+    # Check if running on Streamlit Cloud
+    is_cloud = st.session_state.get('is_streamlit_cloud', False)
+    
+    if is_cloud and not st.get_option("browser.serverAddress").startswith("https"):
+        st.error("⚠️ Microphone access requires HTTPS. Please use the secure URL.")
+        st.markdown("""
+            ### How to Enable Microphone:
+            1. Use Chrome/Firefox/Edge browser
+            2. Access via HTTPS URL
+            3. Allow microphone when prompted
+            
+            Or use text input below:
+        """)
 
 if __name__ == "__main__":
-    main()
-
+    main() 
