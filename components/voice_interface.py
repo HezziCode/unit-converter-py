@@ -115,16 +115,25 @@ class VoiceInterface:
     def listen_and_transcribe(self):
         """Listen for voice input and convert to text"""
         try:
-            with sr.Microphone() as source:
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            # Initialize audio settings
+            sr.Microphone.list_microphone_names()
+            
+            with sr.Microphone(device_index=None) as source:
+                # Shorter ambient noise adjustment
+                self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
+                
+                # Increase energy threshold for better voice detection
+                self.recognizer.energy_threshold = 4000
+                self.recognizer.dynamic_energy_threshold = True
+                
+                # Adjust pause threshold
+                self.recognizer.pause_threshold = 0.8
+                
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 text = self.recognizer.recognize_google(audio)
                 if text:
                     return text.lower()
-        except sr.UnknownValueError:
-            st.error("Retry")  # Simple horizontal message
-        except sr.RequestError:
-            st.error("Retry")  # Simple horizontal message
+                
         except Exception:
-            st.error("Mic Error")  # Simple horizontal message
+            st.error("Mic Error")
         return None
