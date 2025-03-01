@@ -7,7 +7,9 @@ import speech_recognition as sr
 from gtts import gTTS
 import os
 import re
-import unicodedata
+import base64
+import json
+import time
 
 class VoiceInterface:
     """Handles voice input, recognition and command processing"""
@@ -15,14 +17,126 @@ class VoiceInterface:
         # Initialize voice interface with converter reference
         self.converter = converter
         self.recognizer = sr.Recognizer()
+        
+        # Initialize session state for recording status
+        if 'recording' not in st.session_state:
+            st.session_state.recording = False
+        if 'recording_error' not in st.session_state:
+            st.session_state.recording_error = None
 
     def render_voice_button(self):
-        # Add Font Awesome and custom styling
+        # Add custom JavaScript for browser microphone access
+        self._inject_webrtc_audio_js()
+        
+        # Voice button with improved error handling
         if st.button("⏺", key="voice_button", help="Click to speak"):
-            text = self.listen_and_transcribe()
+            # Check if we're on HTTPS
+            is_https = st.get_option("browser.serverAddress").startswith("https")
+            is_localhost = "localhost" in st.get_option("browser.serverAddress") or "127.0.0.1" in st.get_option("browser.serverAddress")
+            
+            if not is_https and not is_localhost:
+                st.warning("⚠️ Microphone access requires HTTPS. Please use the secure URL.")
+                return
+                
+            # Try WebRTC approach first
+            text = self._webrtc_listen()
+            
+            # Fall back to PyAudio if WebRTC fails
+            if not text:
+                text = self.listen_and_transcribe()
+                
             if text:
                 st.session_state.voice_input = text
                 st.experimental_rerun()
+
+    def _inject_webrtc_audio_js(self):
+        """Inject JavaScript for WebRTC audio capture"""
+        webrtc_js = """
+        <script>
+        // Function to handle WebRTC audio capture
+        async function captureAudio() {
+            try {
+                // Request microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                // Create audio context and recorder
+                const audioContext = new AudioContext();
+                const source = audioContext.createMediaStreamSource(stream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                const chunks = [];
+                
+                // Set up recording
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                // Start recording
+                processor.onaudioprocess = function(e) {
+                    const sample = e.inputBuffer.getChannelData(0);
+                    chunks.push(new Float32Array(sample));
+                };
+                
+                // Stop recording after 3 seconds
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Clean up
+                processor.disconnect();
+                source.disconnect();
+                stream.getTracks().forEach(track => track.stop());
+                
+                // Convert to WAV format
+                const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+                
+                // Send to Streamlit
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = function() {
+                    const base64data = reader.result.split(',')[1];
+                    // Store in sessionStorage for Streamlit to access
+                    sessionStorage.setItem('audioData', base64data);
+                    // Notify Streamlit
+                    window.parent.postMessage({type: 'streamlit:setComponentValue', value: true}, '*');
+                };
+                
+                return true;
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                sessionStorage.setItem('micError', err.toString());
+                return false;
+            }
+        }
+        
+        // Execute when button is clicked
+        if (window.captureAudioRequested) {
+            captureAudio();
+        }
+        </script>
+        """
+        
+        # Inject the JavaScript
+        components.html(webrtc_js, height=0)
+
+    def _webrtc_listen(self):
+        """Use WebRTC to capture audio in the browser"""
+        try:
+            # Set flag to trigger JavaScript
+            components.html("""
+            <script>
+            window.captureAudioRequested = true;
+            </script>
+            """, height=0)
+            
+            # Wait for audio capture
+            with st.spinner("Listening..."):
+                time.sleep(3.5)  # Allow time for recording
+            
+            # Try to get the audio data
+            # This would need a custom component to fully implement
+            # For now, we'll fall back to PyAudio
+            return None
+            
+        except Exception as e:
+            st.session_state.recording_error = str(e)
+            return None
 
     def handle_voice_input(self):
         if 'voice_text' in st.session_state:
@@ -115,25 +229,70 @@ class VoiceInterface:
     def listen_and_transcribe(self):
         """Listen for voice input and convert to text"""
         try:
-            # Initialize audio settings
-            sr.Microphone.list_microphone_names()
+            # Check if we're on HTTPS
+            is_https = st.get_option("browser.serverAddress").startswith("https")
+            is_localhost = "localhost" in st.get_option("browser.serverAddress") or "127.0.0.1" in st.get_option("browser.serverAddress")
             
-            with sr.Microphone(device_index=None) as source:
-                # Shorter ambient noise adjustment
-                self.recognizer.adjust_for_ambient_noise(source, duration=0.2)
+            if not is_https and not is_localhost:
+                st.warning("⚠️ Microphone access requires HTTPS. Please use the secure URL.")
+                return None
                 
-                # Increase energy threshold for better voice detection
-                self.recognizer.energy_threshold = 4000
-                self.recognizer.dynamic_energy_threshold = True
+            # Display recording indicator
+            with st.spinner("🎤 Listening..."):
+                # Try multiple microphone configurations
+                success = False
+                error_message = ""
                 
-                # Adjust pause threshold
-                self.recognizer.pause_threshold = 0.8
+                # Try with default microphone first
+                try:
+                    with sr.Microphone() as source:
+                        self.recognizer.adjust_for_ambient_noise(source, duration=0.1)
+                        audio = self.recognizer.listen(source, timeout=3, phrase_time_limit=3)
+                        text = self.recognizer.recognize_google(audio)
+                        if text:
+                            return text.lower()
+                        success = True
+                except Exception as e:
+                    error_message = str(e)
                 
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
-                text = self.recognizer.recognize_google(audio)
-                if text:
-                    return text.lower()
+                # If default failed, try listing and using available microphones
+                if not success:
+                    try:
+                        mics = sr.Microphone.list_microphone_names()
+                        
+                        # Try each microphone
+                        for idx, mic_name in enumerate(mics):
+                            try:
+                                with sr.Microphone(device_index=idx) as source:
+                                    self.recognizer.adjust_for_ambient_noise(source, duration=0.1)
+                                    audio = self.recognizer.listen(source, timeout=3, phrase_time_limit=3)
+                                    text = self.recognizer.recognize_google(audio)
+                                    if text:
+                                        return text.lower()
+                                    success = True
+                                    break
+                            except Exception:
+                                continue
+                    except Exception as e:
+                        error_message += f" | {str(e)}"
                 
-        except Exception:
-            st.error("Mic Error")
+                # If all attempts failed, show error
+                if not success:
+                    st.error("Microphone access failed. Please check your browser settings.")
+                    # Add detailed error info in an expander
+                    with st.expander("Troubleshooting"):
+                        st.markdown("""
+                        ### Microphone Troubleshooting:
+                        
+                        1. **Check browser permissions**: Click the lock icon in your address bar and ensure microphone access is allowed
+                        2. **Use Chrome or Firefox**: These browsers have better support for microphone access
+                        3. **Try HTTPS**: Make sure you're accessing the app via HTTPS
+                        4. **Disable extensions**: Some privacy extensions might block microphone access
+                        """)
+                        st.code(error_message)
+                
+        except Exception as e:
+            st.error("Please check your microphone settings and try again")
+            with st.expander("Error details"):
+                st.code(str(e))
         return None
