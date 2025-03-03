@@ -7,4 +7,5 @@ PyAudio==0.2.11
 gTTS==2.5.1
 pytz==2024.1
 wheel==0.37.1
-setuptools==57.5.0 
+setuptools==57.5.0
+streamlit-webrtc==0.47.7
