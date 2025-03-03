@@ -1,5 +1,7 @@
 import streamlit as st
-import re  # Added for regex in convert method
+import re
+from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, WebRtcMode
+import speech_recognition as sr
 from .ui_components import UIComponents
 from .unit_config import UnitCategories
 from .chat import ChatInterface
@@ -18,7 +20,6 @@ class VoiceInterface:
                 border: 2px solid #FF6B00 !important;
                 background: transparent !important;
                 padding: 0 !important;
-                margin-top: 8px !important;
                 transition: all 0.3s ease !important;
                 display: flex !important;
                 align-items: center !important;
@@ -26,7 +27,6 @@ class VoiceInterface:
                 font-size: 18px !important;
                 color: #FF6B00 !important;
                 line-height: 38px !important;
-                vertical-align: middle !important;
             }
             .stButton > button:hover {
                 background: rgba(255, 107, 0, 0.1) !important;
@@ -39,8 +39,8 @@ class VoiceInterface:
                 self.process_voice_command(text)
 
     def process_voice_command(self, text):
-        """Handle both chat and conversion requests"""
-        # First handle conversion if detected
+        """Handle conversion requests aur chat response trigger karo"""
+        # Conversion handling
         conversion_data = self.parse_conversion_request(text)
         if conversion_data:
             value, from_unit, to_unit = conversion_data
@@ -48,19 +48,30 @@ class VoiceInterface:
             if category:
                 result = self.converter.convert(value, from_unit, to_unit, category)
                 if result is not None:
-                    # Update conversion UI
                     st.session_state['last_conversion'] = {
                         'value': value,
                         'from_unit': from_unit,
                         'to_unit': to_unit,
                         'result': result
                     }
-        # Then handle as chat input
+
+        # Chat response ke liye voice input process karo
+        if self.converter.chat:
+            response = self.converter.chat.get_response(text)
+            if response:
+                st.session_state.setdefault('messages', []).extend([
+                    {"role": "user", "content": text},
+                    {"role": "assistant", "content": response}
+                ])
+            else:
+                st.write("Debug: Voice input ke liye LLM se response nahi mila")
+        else:
+            st.error("Chat interface initialize nahi hua - .env mein API key check karo")
+
         st.session_state['voice_input'] = text
         st.write(f"Debug: Voice input saved - {text}")
 
     def detect_category(self, unit):
-        """Find category for the given unit"""
         categories = UnitCategories.get_categories()
         for cat, data in categories.items():
             if unit in [u.lower() for u in data['units']]:
@@ -78,8 +89,6 @@ class VoiceInterface:
         return None, None, None
 
     def listen_and_transcribe(self):
-        from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, WebRtcMode
-        import speech_recognition as sr
         class AudioProcessor(AudioProcessorBase):
             def __init__(self):
                 self.recognizer = sr.Recognizer()
@@ -135,10 +144,9 @@ class UnitConverter:
                 temperature=0
             )
             
-            # Extract numerical value using regex
             match = re.search(r"\d+\.?\d*", response.text)
             if not match:
-                raise ValueError("No numerical value found in response")
+                raise ValueError("Response mein numerical value nahi mila")
             
             result = float(match.group())
             if 'api_calls' in st.session_state:
@@ -225,11 +233,7 @@ class UnitConverter:
             }
             @media (max-width: 768px) {
                 .main .block-container {padding: 1rem;}
-                [data-testid="column"] {
-                    width: 100% !important;
-                    flex: 1 1 auto !important;
-                    min-width: 100% !important;
-                }
+                [data-testid="column"] {width: 100% !important; flex: 1 1 auto !important; min-width: 100% !important;}
                 .stButton > button {margin-top: 1rem;}
                 .result-container {margin-top: 1rem;}
                 .chat-container {margin-top: 1rem;}
@@ -300,7 +304,7 @@ class UnitConverter:
                             </div>
                             """, unsafe_allow_html=True)
                     else:
-                        st.error("CoHERE model not initialized - Check API key in .env")
+                        st.error("CoHERE model initialize nahi hua - .env mein API key check karo")
 
         with right_col:
             st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
@@ -318,50 +322,36 @@ class UnitConverter:
             with voice_col:
                 self.voice.render_voice_button()
 
-            # Handle voice or text input (only for chat, not conversion)
+            # Voice input handle karo
             if 'voice_input' in st.session_state:
-                prompt = st.session_state.voice_input
-                st.write(f"Debug: Voice input received - {prompt}")
-                with st.chat_message("user"):
-                    st.markdown(prompt)
-                with st.chat_message("assistant"):
+                voice_prompt = st.session_state.pop('voice_input')
+                st.write(f"Debug: Voice input received - {voice_prompt}")
+                if self.chat:
                     with st.spinner("Thinking..."):
-                        if self.chat:
-                            response = self.chat.get_response(prompt)
-                            st.write(f"Debug: CoHERE response - {response}")
-                            if response:
-                                st.markdown(response)
-                                st.session_state.messages.append({"role": "assistant", "content": response})
-                            else:
-                                st.error("No response from CoHERE LLM - Check API key or connection")
-                        else:
-                            st.error("CoHERE model not initialized - Check API key in .env")
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                del st.session_state['voice_input']
+                        response = self.chat.get_response(voice_prompt)
+                        if response:
+                            st.session_state.setdefault('messages', []).extend([
+                                {"role": "user", "content": voice_prompt},
+                                {"role": "assistant", "content": response}
+                            ])
 
+            # Text input handle karo
             if prompt and 'voice_input' not in st.session_state:
                 st.write(f"Debug: Text input received - {prompt}")
-                with st.chat_message("user"):
-                    st.markdown(prompt)
-                    st.session_state.messages.append({"role": "user", "content": prompt})
-                with st.chat_message("assistant"):
+                if self.chat:
                     with st.spinner("Thinking..."):
-                        if self.chat:
-                            response = self.chat.get_response(prompt)
-                            st.write(f"Debug: CoHERE response - {response}")
-                            if response:
-                                st.markdown(response)
-                                st.session_state.messages.append({"role": "assistant", "content": response})
-                            else:
-                                st.error("No response from CoHERE LLM - Check API key or connection")
-                        else:
-                            st.error("CoHERE model not initialized - Check API key in .env")
+                        response = self.chat.get_response(prompt)
+                        if response:
+                            st.session_state.setdefault('messages', []).extend([
+                                {"role": "user", "content": prompt},
+                                {"role": "assistant", "content": response}
+                            ])
 
+            # Chat history display karo
             for message in st.session_state.get('messages', []):
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
 
-            # Add last_conversion display at the end
             if 'last_conversion' in st.session_state:
                 conv = st.session_state['last_conversion']
                 st.markdown(f"""

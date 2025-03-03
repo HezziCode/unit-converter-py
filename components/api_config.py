@@ -21,9 +21,6 @@ def setup_sidebar():
                 st.warning("⚠️ API limit almost reached!")
             st.progress(min(usage_percent / 100, 1.0), text=f"{usage_percent:.1f}%")
         st.markdown("""
-        ### 🎯 Our Mission
-        Making unit conversions simple, fast, and accessible for everyone.
-        
         ### 👨‍💻 Developer
         Muhammad Huzaifa
         💻 Full Stack Developer | 🤖 AI Developer
